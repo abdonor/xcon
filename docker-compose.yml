@@ -1,0 +1,76 @@
+version: '3'
+services:
+
+  #PHP Service
+  app-xcon:
+    image: php:7.2.16-fpm
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app-xcon
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app-xcon
+      SERVICE_TAGS: dev
+    volumes:
+      - ./:/var/www
+      - ${SSH_PATH}:/root/.ssh
+    networks:
+      - app-network-xcon
+
+  #- ./docker/php-fpm/usr/local/etc/php/php.ini:/usr/local/etc/php/php.ini
+  #Nginx Service - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+  webserver-xcon:
+    image: nginx:alpine
+    container_name: webserver-xcon
+    restart: unless-stopped
+    tty: true
+    ports:
+      - ${WEB_PORT}:80
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      app-network-xcon:
+        ipv4_address: ${WEB_IP}
+
+  #MariaDB Service
+  db-xcon:
+    image: mariadb
+    container_name: db-xcon
+    restart: unless-stopped
+    tty: true
+    ports:
+      - ${DOCKER_MAP_DB_PORT}:3306
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+      MYSQL_DATABASE: xcon
+      MYSQL_ROOT_PASSWORD: 123
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mariadb
+    networks:
+      - app-network-xcon
+
+  redis-xcon:
+    image: 'bitnami/redis:latest'
+    container_name: redis-xcon
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_PASSWORD=123
+      - REDIS_MASTER_PORT_NUMBER=6379
+      - REDIS_MASTER_PASSWORD=123
+    networks:
+      app-network-xcon:
+        ipv4_address: 171.23.0.63
+
+#Docker Networks
+#docker network create --subnet 171.23.0.0/24 app-network-xcon
+networks:
+  app-network-xcon:
+    external: true
+
+#Volumes
+volumes:
+  dbdata:
+    driver: local
